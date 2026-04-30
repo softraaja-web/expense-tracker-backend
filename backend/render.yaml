@@ -1,9 +1,11 @@
-# render.yaml - Render deployment configuration
+# render.yaml - Render deployment configuration (Native Python)
 services:
   - type: web
     name: gpay-transaction-extractor
-    runtime: docker
-    dockerfilePath: ./Dockerfile
+    runtime: python
+    rootDir: backend
+    buildCommand: "./build.sh"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
     envVars:
       - key: SUPABASE_URL
         sync: false
@@ -19,5 +21,7 @@ services:
         value: "*"
       - key: DEBUG
         value: "false"
+      - key: PYTHON_VERSION
+        value: "3.11.6"
     healthCheckPath: /health
     plan: free
