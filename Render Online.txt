@@ -1,0 +1,43 @@
+To take your app online for real usage, we will use Render for the backend and Firebase Hosting for the frontend. This setup is secure, scalable, and fits the "SaaS" model perfectly.
+
+Here is the step-by-step deployment plan:
+
+1. Backend Deployment (Render)
+The project is already configured with a Dockerfile and render.yaml.
+
+Push your code to GitHub.
+Log in to Render and click New > Blueprint.
+Connect your GitHub repository.
+Render will detect the render.yaml file. You will need to enter the following Environment Variables in the Render dashboard:
+SUPABASE_URL: https://hobglezvaxfuxiisahyf.supabase.co
+SUPABASE_KEY: (Your Service Role Key)
+GEMINI_API_KEY: (Your Gemini Key)
+FIREBASE_CREDENTIALS_JSON: Paste the entire content of your gpayhomeaccount-firebase-adminsdk...json file here as a single-line string.
+2. Frontend Deployment (Firebase Hosting)
+Since you already have a Firebase project, Hosting is the best choice.
+
+Build the Flutter Web App: Run this command in your terminal (frontend/gpay_extractor folder):
+bash
+flutter build web --release
+Initialize Firebase Hosting:
+bash
+firebase init hosting
+Select your project: gpayhomeaccount.
+Set the public directory to: build/web.
+Configure as a single-page app: Yes.
+Deploy:
+bash
+firebase deploy --only hosting
+3. Update the API URL
+Once your backend is live on Render (e.g., https://gpay-backend.onrender.com), you must update the AppConfig in your Flutter app before the final build:
+
+File: frontend/gpay_extractor/lib/config/app_config.dart
+
+dart
+static const String apiBaseUrl = 'https://your-backend-name.onrender.com';
+4. Enable Production Authentication
+In the Firebase Console:
+
+Go to Authentication > Settings > Authorized Domains.
+Add your new Render backend URL and your Firebase Hosting URL (e.g., gpayhomeaccount.web.app) to the list.
+Would you like me to help you with any specific part of this process (like generating the final build or configuring the Firebase files)?

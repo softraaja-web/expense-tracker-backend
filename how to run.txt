@@ -1,0 +1,22 @@
+# Navigate to the backend folder
+cd "c:\Working Folder\GpayHomeAccount\backend"
+
+# Activate the virtual environment
+.\venv\Scripts\Activate
+
+# Run the FastAPI server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+
+The backend will be available at http://localhost:8000. You can also view the API docs at http://localhost:8000/docs.
+
+# Navigate to the Flutter project folder
+cd "c:\Working Folder\GpayHomeAccount\frontend\gpay_extractor"
+
+# Get dependencies (only needed after changes to pubspec.yaml)
+flutter pub get
+
+# Run the app (choose one):
+flutter run -d chrome      # Run on Chrome (web)
+flutter run -d windows     # Run on Windows desktop
+flutter run -d edge        # Run on Edge browser

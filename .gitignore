@@ -1,0 +1,38 @@
+# Environment
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Credentials
+*.json
+!render.yaml
+credentials/
+service-account*.json
+
+# Flutter
+frontend/gpay_extractor/.dart_tool/
+frontend/gpay_extractor/build/
+frontend/gpay_extractor/.flutter-plugins
+frontend/gpay_extractor/.flutter-plugins-dependencies
