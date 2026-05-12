@@ -32,7 +32,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyD-HE0h21wNVn-7r3HYSdCLWkIv33kYE8U',
-    appId: '1:525095142500:web:9dc5f00bb3414994650b71', // Estimated
+    appId: '1:525095142500:web:9dc5f00bb3414994650b71', // IMPORTANT: Verify this in Firebase Console!
     messagingSenderId: '525095142500',
     projectId: 'gpayhomeaccount',
     authDomain: 'gpayhomeaccount.firebaseapp.com',

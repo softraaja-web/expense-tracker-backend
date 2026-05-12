@@ -19,8 +19,7 @@ class TransactionCard extends StatelessWidget {
   }
 
   IconData get _tagIcon {
-    final iconValue = AppConfig.tagIcons[transaction.tag];
-    return iconValue != null ? IconData(iconValue, fontFamily: 'MaterialIcons') : Icons.more_horiz;
+    return AppConfig.tagIcons[transaction.tag] ?? Icons.more_horiz;
   }
 
   @override

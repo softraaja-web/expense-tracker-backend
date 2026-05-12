@@ -4,7 +4,7 @@ Main application entry point with all API endpoints.
 """
 
 import logging
-from datetime import date
+from datetime import datetime, date, timezone, timedelta
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -110,7 +110,7 @@ async def upload_image(file: UploadFile = File(...), current_user: dict = Depend
     8. Return extracted data
     """
     # Step 0: Check credits/plan
-    profile = current_user.get("profile", {})
+    profile = current_user.get("profile") or {}
     plan = profile.get("plan", "free")
     credits = profile.get("credits", 0)
 
@@ -445,7 +445,6 @@ async def verify_payment(request: Request, current_user: dict = Depends(get_curr
             logger.info(f"Using mock payment verification for user {current_user.get('uid')}")
 
         # Upgrade User
-        from datetime import timedelta
         expiry_date = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
         
         success = update_user_plan(

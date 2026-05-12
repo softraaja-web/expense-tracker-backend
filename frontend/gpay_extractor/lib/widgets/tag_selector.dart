@@ -33,10 +33,7 @@ class TagSelector extends StatelessWidget {
             final isSelected = tag == selectedTag;
             final colorValue = AppConfig.tagColors[tag] ?? 0xFF8D99AE;
             final color = Color(colorValue);
-            final iconValue = AppConfig.tagIcons[tag];
-            final icon = iconValue != null
-                ? IconData(iconValue, fontFamily: 'MaterialIcons')
-                : Icons.more_horiz;
+            final icon = AppConfig.tagIcons[tag] ?? Icons.more_horiz;
 
             return AnimatedContainer(
               duration: const Duration(milliseconds: 200),

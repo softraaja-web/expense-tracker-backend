@@ -32,22 +32,35 @@ def _initialize_firebase():
         return
 
     try:
-        # Check if it's a valid JSON string or file path
+        if not cred_path:
+            logger.error("FIREBASE_CREDENTIALS_JSON is empty or not set.")
+            return
+
+        # 1. Try as a file path
         if os.path.exists(cred_path):
             cred = credentials.Certificate(cred_path)
             firebase_admin.initialize_app(cred)
             logger.info("Firebase Admin SDK initialized from file.")
-        else:
-            try:
-                # Try parsing as JSON string directly
-                cred_dict = json.loads(cred_path)
-                cred = credentials.Certificate(cred_dict)
-                firebase_admin.initialize_app(cred)
-                logger.info("Firebase Admin SDK initialized from JSON string.")
-            except json.JSONDecodeError:
-                logger.error("Invalid Firebase credentials provided.")
+            return
+
+        # 2. Try as a JSON string
+        # Clean the string (remove potential surrounding quotes or escaping)
+        cleaned_json = cred_path.strip()
+        if cleaned_json.startswith("'") or cleaned_json.startswith('"'):
+            cleaned_json = cleaned_json[1:-1]
+        
+        try:
+            cred_dict = json.loads(cleaned_json)
+            cred = credentials.Certificate(cred_dict)
+            firebase_admin.initialize_app(cred)
+            logger.info("Firebase Admin SDK initialized from JSON string.")
+        except json.JSONDecodeError as je:
+            logger.error(f"Failed to parse FIREBASE_CREDENTIALS_JSON as JSON: {je}")
+            # Log a small snippet of the string for debugging (hide sensitive parts)
+            snippet = cleaned_json[:20] + "..." + cleaned_json[-20:] if len(cleaned_json) > 40 else cleaned_json
+            logger.error(f"JSON Snippet: {snippet}")
     except Exception as e:
-        logger.error(f"Failed to initialize Firebase Admin SDK: {e}")
+        logger.error(f"Unexpected error initializing Firebase: {e}")
 
 # Initialize on module load
 _initialize_firebase()
@@ -58,7 +71,7 @@ def verify_firebase_token(id_token: str) -> dict:
     Verify Firebase JWT token and return user data.
     """
     try:
-        decoded_token = auth.verify_id_token(id_token)
+        decoded_token = auth.verify_id_token(id_token, clock_skew_seconds=10)
         return {
             "uid": decoded_token.get("uid"),
             "email": decoded_token.get("email"),
@@ -90,8 +103,13 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(
             logger.info(f"New user detected, creating profile for {email}")
             profile = create_user_profile(uid, email)
         
+        # Fallback if profile is still None (DB issue)
+        if not profile:
+            logger.warning(f"Could not load/create profile for {uid}, using defaults")
+            profile = {"plan": "free", "credits": 20}
+        
         # Check plan expiry
-        if profile and profile.get("plan") == "pro":
+        if profile.get("plan") == "pro":
             expiry_str = profile.get("expiry_date")
             if expiry_str:
                 try:

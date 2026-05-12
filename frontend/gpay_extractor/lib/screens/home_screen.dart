@@ -27,17 +27,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<Transaction> _recentTransactions = [];
   DailyTotal _dailyTotal = DailyTotal(date: '', totalExpense: 0, totalIncome: 0, netBalance: 0, transactionCount: 0);
   Map<String, dynamic>? _userProfile;
-  late Razorpay _razorpay;
+  Razorpay? _razorpay;
   late AnimationController _fabController;
   late Animation<double> _fabAnimation;
 
   @override
   void initState() {
     super.initState();
+    /* Razorpay initialization - Under Construction
     _razorpay = Razorpay();
-    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+    _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay!.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+    */
 
     _fabController = AnimationController(
       duration: const Duration(milliseconds: 600),
@@ -54,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void dispose() {
     _fabController.dispose();
-    _razorpay.clear();
+    _razorpay?.clear();
     super.dispose();
   }
 

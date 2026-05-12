@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 # ─── Amount Patterns ────────────────────────────────────────────────
 AMOUNT_PATTERNS = [
     r'[₹?]\s*([\d,]+\.?\d*)',                    # ₹1,500.00 or ?1,500.00 (common OCR error)
+    r'^2\s*([\d,]+\.?\d*)$',                     # 2500 (misread ₹500 at start of line)
     r'Rs\.?\s*([\d,]+\.?\d*)',                   # Rs. 1500 or Rs 1500
     r'INR\s*([\d,]+\.?\d*)',                      # INR 1500
-    r'(?:Amount|Paid|Sent)\s*:?\s*₹?\s*([\d,]+\.?\d*)', # Amount: 500
-    r'(?:Paid|Sent|Received)\s*[₹]?\s*([\d,]+\.?\d*)',  # Paid ₹500
-    r'([\d,]+\.?\d*)\s*(?:paid|sent|received)',   # 500 paid
+    r'(?i)(?:Amount|Paid|Sent|Received)\s*:?\s*[₹?2]?\s*([\d,]+\.?\d*)', # Amount: 500 or Paid 2500
+    r'(?i)([\d,]+\.?\d*)\s*(?:paid|sent|received)',   # 500 paid
 ]
 
 # ─── Recipient Patterns ─────────────────────────────────────────────
