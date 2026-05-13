@@ -233,6 +233,7 @@ def get_user_transactions(user_id: str, count: int = 20, tx_type: Optional[str] 
                         pass
                 
                 tx = {
+                    "id": str(row.get("id", "")),
                     "date": display_date,
                     "amount": str(row.get("amount", 0)),
                     "recipient": row.get("to_name", ""),
@@ -297,3 +298,28 @@ def get_user_daily_total(user_id: str, target_date: Optional[str] = None) -> dic
     except Exception as e:
         logger.error(f"Failed to calculate daily total for user {user_id}: {e}")
         return {"total_expense": 0.0, "total_income": 0.0, "net_balance": 0.0, "transaction_count": 0}
+
+
+def delete_transaction(user_id: str, transaction_id: str) -> tuple[bool, str]:
+    """
+    Delete a transaction from Supabase.
+    """
+    client = _get_client()
+    if not client:
+        return False, "Supabase client not initialized"
+
+    try:
+        # Delete only if it belongs to the user
+        response = client.table("transactions")\
+            .delete()\
+            .eq("id", transaction_id)\
+            .eq("user_id", user_id)\
+            .execute()
+            
+        if hasattr(response, 'data') and response.data:
+            return True, "Transaction deleted successfully"
+        else:
+            return False, "Transaction not found or not owned by user"
+    except Exception as e:
+        logger.error(f"Failed to delete transaction {transaction_id}: {e}")
+        return False, str(e)

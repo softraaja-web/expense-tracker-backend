@@ -8,6 +8,7 @@ from typing import Optional
 
 class TransactionData(BaseModel):
     """Represents a parsed transaction from a GPay screenshot."""
+    id: Optional[str] = Field(default=None, description="Unique transaction ID")
     date: str = Field(default="", description="Transaction date")
     amount: str = Field(default="", description="Transaction amount in ₹")
     recipient: str = Field(default="", description="Recipient name")

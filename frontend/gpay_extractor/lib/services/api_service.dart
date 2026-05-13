@@ -311,4 +311,19 @@ class ApiService {
       return false;
     }
   }
+
+  /// Delete a transaction from Supabase.
+  static Future<bool> deleteTransaction(String transactionId) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/transactions/$transactionId');
+      final headers = await _getAuthHeaders();
+      final response = await http.delete(uri, headers: headers).timeout(
+        const Duration(seconds: 15),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
 }

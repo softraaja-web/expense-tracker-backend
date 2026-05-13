@@ -43,6 +43,47 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
+  Future<void> _deleteTransaction(Transaction transaction) async {
+    if (transaction.id == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Transaction'),
+        content: Text('Are you sure you want to delete the transaction for ₹${transaction.amount} to ${transaction.recipient}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final success = await ApiService.deleteTransaction(transaction.id!);
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Transaction deleted')),
+          );
+          _loadData();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to delete transaction'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
   List<Transaction> get _filteredTransactions {
     if (_selectedTag == 'All') return _transactions;
     return _transactions.where((tx) => tx.tag == _selectedTag).toList();
@@ -227,8 +268,23 @@ class _HistoryScreenState extends State<HistoryScreen> {
               SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
-                    return TransactionCard(
-                      transaction: _filteredTransactions[index],
+                    final transaction = _filteredTransactions[index];
+                    return Dismissible(
+                      key: Key(transaction.id ?? 'tx_$index'),
+                      direction: DismissDirection.startToEnd,
+                      confirmDismiss: (direction) async {
+                        _deleteTransaction(transaction);
+                        return false; // We handle deletion manually
+                      },
+                      background: Container(
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.only(left: 20),
+                        color: Colors.red.withOpacity(0.1),
+                        child: const Icon(Icons.delete_outline, color: Colors.red),
+                      ),
+                      child: TransactionCard(
+                        transaction: transaction,
+                      ),
                     );
                   },
                   childCount: _filteredTransactions.length,

@@ -1,5 +1,6 @@
 /// Transaction data model matching the backend API response.
 class Transaction {
+  final String? id;
   final String date;
   final String amount;
   final String recipient;
@@ -11,6 +12,7 @@ class Transaction {
   final String? rawText;
 
   Transaction({
+    this.id,
     required this.date,
     required this.amount,
     required this.recipient,
@@ -24,6 +26,7 @@ class Transaction {
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
     return Transaction(
+      id: json['id']?.toString(),
       date: json['date'] ?? json['Date'] ?? '',
       amount: json['amount'] ?? json['_amount'] ?? json['Amount'] ?? '',
       recipient: json['recipient'] ?? json['to'] ?? json['To'] ?? json['Recipient'] ?? '',
@@ -40,6 +43,7 @@ class Transaction {
 
   Map<String, dynamic> toJson() {
     return {
+      if (id != null) 'id': id,
       'date': date,
       'amount': amount,
       'recipient': recipient,
@@ -63,6 +67,7 @@ class Transaction {
   }
 
   Transaction copyWith({
+    String? id,
     String? date,
     String? amount,
     String? recipient,
@@ -74,6 +79,7 @@ class Transaction {
     String? rawText,
   }) {
     return Transaction(
+      id: id ?? this.id,
       date: date ?? this.date,
       amount: amount ?? this.amount,
       recipient: recipient ?? this.recipient,

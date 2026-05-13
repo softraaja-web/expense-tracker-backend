@@ -35,7 +35,8 @@ from app.db.supabase_client import (
     get_user_transactions, 
     get_user_daily_total,
     update_user_credits,
-    update_user_plan
+    update_user_plan,
+    delete_transaction
 )
 
 # ─── Logging Setup ──────────────────────────────────────────────────
@@ -338,6 +339,24 @@ async def get_history(count: int = 20, type: str | None = None, current_user: di
             transactions=[],
             message=f"Failed to fetch history: {str(e)}",
         )
+
+
+@app.delete("/transactions/{transaction_id}")
+async def delete_transaction_endpoint(transaction_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a transaction."""
+    try:
+        user_id = current_user.get("uid")
+        success, message = delete_transaction(user_id, transaction_id)
+        
+        if success:
+            return {"success": True, "message": message}
+        else:
+            raise HTTPException(status_code=404, detail=message)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Delete failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ─── Daily Total ────────────────────────────────────────────────────
