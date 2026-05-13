@@ -261,11 +261,18 @@ class ApiService {
   }
 
   /// Create a Razorpay order.
-  static Future<Map<String, dynamic>?> createOrder() async {
+  static Future<Map<String, dynamic>?> createOrder(String planId) async {
     try {
       final uri = Uri.parse('$_baseUrl/create-order');
-      final headers = await _getAuthHeaders();
-      final response = await http.post(uri, headers: headers).timeout(
+      final authHeaders = await _getAuthHeaders();
+      final response = await http.post(
+        uri, 
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        body: jsonEncode({'plan_id': planId}),
+      ).timeout(
         const Duration(seconds: 15),
       );
 
@@ -279,7 +286,7 @@ class ApiService {
   }
 
   /// Verify Razorpay payment.
-  static Future<bool> verifyPayment(Map<String, dynamic> razorpayResponse) async {
+  static Future<bool> verifyPayment(Map<String, dynamic> razorpayResponse, String planId) async {
     try {
       final uri = Uri.parse('$_baseUrl/verify-payment');
       final authHeaders = await _getAuthHeaders();
@@ -289,7 +296,10 @@ class ApiService {
           'Content-Type': 'application/json',
           ...authHeaders,
         },
-        body: jsonEncode(razorpayResponse),
+        body: jsonEncode({
+          ...razorpayResponse,
+          'plan_id': planId,
+        }),
       ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {

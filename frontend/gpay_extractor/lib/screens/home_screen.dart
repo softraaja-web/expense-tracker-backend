@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:js' as js;
+import 'dart:html' as html;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/transaction.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -28,18 +32,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   DailyTotal _dailyTotal = DailyTotal(date: '', totalExpense: 0, totalIncome: 0, netBalance: 0, transactionCount: 0);
   Map<String, dynamic>? _userProfile;
   Razorpay? _razorpay;
+  String? _selectedPlanId;
+  String _loadingMessage = 'Extracting transaction...';
   late AnimationController _fabController;
   late Animation<double> _fabAnimation;
 
   @override
   void initState() {
     super.initState();
-    /* Razorpay initialization - Under Construction
     _razorpay = Razorpay();
     _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay!.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
-    */
 
     _fabController = AnimationController(
       duration: const Duration(milliseconds: 600),
@@ -51,6 +55,43 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
     _fabController.forward();
     _loadData();
+
+    if (kIsWeb) {
+      _setupWebEventListeners();
+    }
+  }
+
+  void _setupWebEventListeners() {
+    html.window.addEventListener('razorpay_success', (event) {
+      final detail = (event as html.CustomEvent).detail;
+      _handleWebPaymentSuccess(detail);
+    });
+
+    html.window.addEventListener('razorpay_error', (event) {
+      final detail = (event as html.CustomEvent).detail;
+      _showError(detail['message'] ?? 'Payment failed');
+    });
+  }
+
+  void _handleWebPaymentSuccess(dynamic detail) async {
+    // Verify payment on backend
+    final success = await ApiService.verifyPayment({
+      'razorpay_payment_id': detail['payment_id'],
+      'razorpay_order_id': detail['order_id'],
+      'razorpay_signature': detail['signature'],
+    }, _selectedPlanId ?? 'plus');
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Upgraded to Pro successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      _loadData();
+    } else {
+      _showError('Payment verification failed.');
+    }
   }
 
   @override
@@ -81,12 +122,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       'razorpay_payment_id': response.paymentId,
       'razorpay_order_id': response.orderId,
       'razorpay_signature': response.signature,
-    });
+    }, _selectedPlanId ?? 'plus');
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Upgraded to Pro successfully!'),
+        SnackBar(
+          content: Text('Upgraded to ${_selectedPlanId?.toUpperCase() ?? 'Pro'} successfully!'),
           backgroundColor: Colors.green,
         ),
       );
@@ -114,34 +155,102 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Not used for now
   }
 
-  Future<void> _startUpgradeFlow() async {
+  void _showPlanSelectionDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Under Construction'),
-        content: const Text('The payment integration is currently being configured. Please check back later!'),
+        title: const Text('Choose Your Plan'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: AppConfig.availablePlans.where((p) => p.id != 'free').map((plan) {
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              child: ListTile(
+                title: Text(plan.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(plan.description),
+                trailing: Text('₹${plan.price}', style: const TextStyle(color: Color(0xFF6C63FF), fontWeight: FontWeight.bold)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _startUpgradeFlow(plan);
+                },
+              ),
+            );
+          }).toList(),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              // Mock upgrade for testing purposes
-              final success = await ApiService.verifyPayment({
-                'razorpay_payment_id': 'mock_pay_id',
-                'razorpay_order_id': 'mock_order_id',
-                'razorpay_signature': 'mock_signature',
-              });
-              if (success) {
-                _loadProfile();
-              }
-            },
-            child: const Text('Mock Upgrade (Dev Only)'),
+            child: const Text('Cancel'),
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _startUpgradeFlow(SubscriptionPlan plan) async {
+    // 1. Create order on backend
+    setState(() {
+      _selectedPlanId = plan.id;
+      _loadingMessage = 'Preparing your ${plan.name} upgrade...';
+      _isUploading = true;
+    });
+    try {
+      final order = await ApiService.createOrder(plan.id);
+      
+      if (!mounted) return;
+      setState(() => _isUploading = false);
+
+      if (order == null) {
+        _showError('Failed to create order. Please check backend logs.');
+        return;
+      }
+
+      // 2. Open Razorpay Checkout
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Opening Payment Gateway for Order: ${order['id']}')),
+      );
+
+      var options = {
+        'key': AppConfig.razorpayKey,
+        'amount': order['amount'],
+        'name': 'GPay Extractor',
+        'order_id': order['id'],
+        'description': 'Pro Plan - Unlimited extractions for 30 days',
+        'prefill': {
+          'contact': '',
+          'email': AuthService.currentUser?.email ?? '',
+        },
+        'external': {
+          'wallets': ['paytm']
+        }
+      };
+
+      try {
+        if (kIsWeb) {
+          js.context.callMethod('openRazorpay', [
+            AppConfig.razorpayKey,
+            order['amount'],
+            'GPay Extractor',
+            'Pro Plan - Unlimited extractions',
+            order['id'],
+            AuthService.currentUser?.email ?? '',
+            '', // Phone number
+          ]);
+        } else {
+          _razorpay?.open(options);
+        }
+      } catch (e) {
+        _showError('Razorpay Error: $e');
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isUploading = false);
+      _showError('Error starting payment: $e');
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -178,7 +287,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
       if (image == null) return;
 
-      setState(() => _isUploading = true);
+      setState(() {
+        _loadingMessage = 'Extracting transaction...';
+        _isUploading = true;
+      });
 
       final response = await ApiService.uploadImage(image);
 
@@ -247,6 +359,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
+          TextButton.icon(
+            onPressed: () async {
+              final data = await Clipboard.getData(Clipboard.kTextPlain);
+              if (data != null && data.text != null) {
+                controller.text = data.text!;
+              }
+            },
+            icon: const Icon(Icons.content_paste_rounded, size: 18),
+            label: const Text('Paste'),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF00B4D8),
+            ),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, controller.text),
             style: ElevatedButton.styleFrom(
@@ -260,7 +385,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
 
     if (result != null && result.trim().isNotEmpty) {
-      setState(() => _isUploading = true);
+      setState(() {
+        _loadingMessage = 'Analyzing transaction text...';
+        _isUploading = true;
+      });
       try {
         final response = await ApiService.parseText(result);
         if (!mounted) return;
@@ -395,11 +523,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           ),
                                         ),
                                         child: Text(
-                                          _userProfile!['plan'] == 'pro' ? 'PRO' : 'FREE',
+                                          _userProfile!['plan'] == 'free' ? 'FREE' : _userProfile!['plan'].toString().toUpperCase(),
                                           style: TextStyle(
                                             fontSize: 10,
                                             fontWeight: FontWeight.w800,
-                                            color: _userProfile!['plan'] == 'pro'
+                                            color: _userProfile!['plan'] != 'free'
                                               ? const Color(0xFFB8860B)
                                               : Colors.grey[600],
                                           ),
@@ -412,7 +540,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   Row(
                                     children: [
                                       Text(
-                                        'Credits: ${_userProfile!['plan'] == 'pro' ? '∞' : _userProfile!['credits']}',
+                                        'Credits: ${_userProfile!['credits']}',
                                         style: TextStyle(
                                           color: const Color(0xFF6C63FF),
                                           fontSize: 13,
@@ -422,7 +550,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       if (_userProfile!['plan'] == 'free') ...[
                                         const SizedBox(width: 8),
                                         GestureDetector(
-                                          onTap: _startUpgradeFlow,
+                                          onTap: _showPlanSelectionDialog,
                                           child: Text(
                                             'Upgrade',
                                             style: TextStyle(
@@ -752,9 +880,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         strokeWidth: 3,
                       ),
                       const SizedBox(height: 20),
-                      const Text(
-                        'Extracting transaction...',
-                        style: TextStyle(
+                      Text(
+                        _loadingMessage,
+                        style: const TextStyle(
                           color: Color(0xFF1A1D26),
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -762,7 +890,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Running OCR & AI analysis',
+                        _loadingMessage.contains('Pro') 
+                          ? 'Setting up secure payment gateway' 
+                          : 'Running OCR & AI analysis',
                         style: TextStyle(
                           color: const Color(0xFF1A1D26).withOpacity(0.4),
                           fontSize: 13,

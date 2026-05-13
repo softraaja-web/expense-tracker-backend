@@ -33,6 +33,61 @@
   <link rel="manifest" href="manifest.json">
   <!-- Razorpay SDK for Web -->
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    function openRazorpay(key, amount, name, description, orderId, email, contact) {
+      console.log("Opening Razorpay with Order ID:", orderId);
+      var options = {
+        "key": key,
+        "amount": amount,
+        "currency": "INR",
+        "name": name,
+        "description": description,
+        "order_id": orderId,
+        "handler": function (response) {
+          window.dispatchEvent(new CustomEvent('razorpay_success', {
+            detail: {
+              payment_id: response.razorpay_payment_id,
+              order_id: response.razorpay_order_id,
+              signature: response.razorpay_signature
+            }
+          }));
+        },
+        "prefill": {
+          "email": email,
+          "contact": contact
+        },
+        "config": {
+          "display": {
+            "blocks": {
+              "upi": {
+                "name": "UPI / Google Pay / PhonePe",
+                "instruments": [
+                  {
+                    "method": "upi"
+                  }
+                ]
+              }
+            },
+            "sequence": ["block.upi", "block.other"],
+            "preferences": {
+              "show_default_blocks": true
+            }
+          }
+        },
+        "theme": {
+          "color": "#6C63FF"
+        }
+      };
+      var rzp1 = new Razorpay(options);
+      rzp1.on('payment.failed', function (response){
+        console.error("Payment failed:", response.error);
+        window.dispatchEvent(new CustomEvent('razorpay_error', {
+          detail: { message: response.error.description }
+        }));
+      });
+      rzp1.open();
+    }
+  </script>
 </head>
 <body>
   <script src="flutter_bootstrap.js" async></script>
