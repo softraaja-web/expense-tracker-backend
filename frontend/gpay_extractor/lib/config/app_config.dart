@@ -21,10 +21,12 @@ class AppConfig {
     'Travel',
     'Shopping',
     'Bills',
+    'Rent',
+    'Salary',
+    'Family',
+    'Medical',
     'Entertainment',
-    'Health',
-    'Education',
-    'Transfer',
+    'Fuel',
     'Others',
   ];
 
@@ -34,10 +36,12 @@ class AppConfig {
     'Travel': Icons.directions_car,
     'Shopping': Icons.shopping_bag,
     'Bills': Icons.receipt_long,
+    'Rent': Icons.home,
+    'Salary': Icons.account_balance_wallet,
+    'Family': Icons.family_restroom,
+    'Medical': Icons.local_hospital,
     'Entertainment': Icons.movie,
-    'Health': Icons.local_hospital,
-    'Education': Icons.school,
-    'Transfer': Icons.swap_horiz,
+    'Fuel': Icons.local_gas_station,
     'Others': Icons.more_horiz,
   };
 
@@ -47,10 +51,12 @@ class AppConfig {
     'Travel': 0xFF4ECDC4,
     'Shopping': 0xFFE91E8C,
     'Bills': 0xFF7B68EE,
+    'Rent': 0xFF2ECC71,
+    'Salary': 0xFF27AE60,
+    'Family': 0xFFE74C3C,
+    'Medical': 0xFF6BCB77,
     'Entertainment': 0xFFFFD93D,
-    'Health': 0xFF6BCB77,
-    'Education': 0xFF4D96FF,
-    'Transfer': 0xFF95AABE,
+    'Fuel': 0xFFF39C12,
     'Others': 0xFF8D99AE,
   };
 

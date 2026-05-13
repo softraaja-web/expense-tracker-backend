@@ -137,10 +137,12 @@ class ApiService {
   }
 
   /// Fetch recent transaction history.
-  static Future<List<Transaction>> getHistory({int count = 20, String? type}) async {
+  static Future<List<Transaction>> getHistory({int count = 20, String? type, int? month, int? year}) async {
     try {
       String url = '$_baseUrl/history?count=$count';
       if (type != null && type != 'All') url += '&type=${type.toLowerCase()}';
+      if (month != null) url += '&month=$month';
+      if (year != null) url += '&year=$year';
       
       final uri = Uri.parse(url);
       final headers = await _getAuthHeaders();

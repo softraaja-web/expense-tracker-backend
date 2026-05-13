@@ -31,6 +31,47 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     _processData();
   }
 
+  Future<void> _deleteTransaction(Transaction transaction) async {
+    if (transaction.id == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Transaction'),
+        content: Text('Are you sure you want to delete the transaction for ₹${transaction.amount} to ${transaction.recipient}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final success = await ApiService.deleteTransaction(transaction.id!);
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Transaction deleted')),
+          );
+          _fetchData();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to delete transaction'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
+
   void _processData() {
     double total = 0;
     Map<String, double> totals = {};
@@ -365,21 +406,51 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                   const SizedBox(height: 12),
                   ...txs.map((tx) => Padding(
                     padding: const EdgeInsets.only(bottom: 12),
-                    child: Row(children: [
-                      Container(width: 8, height: 8, decoration: BoxDecoration(color: accentColor.withOpacity(0.5), shape: BoxShape.circle)),
-                      const SizedBox(width: 12),
-                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(tx.date, style: const TextStyle(color: Color(0xFF1A1D26), fontSize: 13)),
-                        Text(tx.tag, style: TextStyle(color: const Color(0xFF1A1D26).withOpacity(0.4), fontSize: 11)),
-                      ])),
-                      Text(tx.amount, style: const TextStyle(color: Color(0xFF1A1D26), fontWeight: FontWeight.w600, fontSize: 14)),
-                    ]),
+                    child: Dismissible(
+                      key: Key(tx.id ?? 'tx_${tx.recipient}_${tx.date}'),
+                      direction: DismissDirection.startToEnd,
+                      confirmDismiss: (direction) async {
+                        await _deleteTransaction(tx);
+                        return false;
+                      },
+                      background: Container(
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.only(left: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                      ),
+                      child: Row(children: [
+                        Container(width: 8, height: 8, decoration: BoxDecoration(color: accentColor.withOpacity(0.5), shape: BoxShape.circle)),
+                        const SizedBox(width: 12),
+                        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(tx.date, style: const TextStyle(color: Color(0xFF1A1D26), fontSize: 13)),
+                          Text(tx.tag, style: TextStyle(color: const Color(0xFF1A1D26).withOpacity(0.4), fontSize: 11)),
+                        ])),
+                        Text(tx.amount, style: const TextStyle(color: Color(0xFF1A1D26), fontWeight: FontWeight.w600, fontSize: 14)),
+                      ]),
+                    ),
                   )),
                   const SizedBox(height: 8),
                   SizedBox(
                     width: double.infinity,
                     child: TextButton(
-                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => CategoryDetailScreen(category: name, transactions: txs))),
+                      onPressed: () async {
+                        final hasChanged = await Navigator.push<bool>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (c) => CategoryDetailScreen(
+                              category: name,
+                              transactions: txs,
+                            ),
+                          ),
+                        );
+                        if (hasChanged == true) {
+                          _fetchData();
+                        }
+                      },
                       style: TextButton.styleFrom(backgroundColor: accentColor.withOpacity(0.08), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                       child: Text('View Details', style: TextStyle(color: accentColor, fontWeight: FontWeight.bold)),
                     ),

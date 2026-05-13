@@ -16,13 +16,13 @@ CATEGORY_KEYWORDS: dict[str, list[str]] = {
         "food", "eat", "dine", "biryani", "kitchen", "bakery",
         "dunkin", "baskin", "ice cream", "chai", "tea", "hotel",
         "mess", "canteen", "tiffin", "barbeque", "grill",
+        "haldiram", "bikanervala", "saravana", "dhaba",
     ],
     "Travel": [
         "uber", "ola", "rapido", "metro", "bus", "irctc", "redbus",
         "makemytrip", "goibibo", "cleartrip", "yatra", "flight",
-        "train", "cab", "auto", "rickshaw", "taxi", "petrol",
-        "fuel", "hp", "indian oil", "bharat petroleum", "shell",
-        "parking", "fastag", "toll",
+        "train", "cab", "auto", "rickshaw", "taxi",
+        "parking", "fastag", "toll", "airport", "railway",
     ],
     "Shopping": [
         "amazon", "flipkart", "myntra", "ajio", "meesho", "snapdeal",
@@ -35,7 +35,26 @@ CATEGORY_KEYWORDS: dict[str, list[str]] = {
         "vodafone", "vi", "bsnl", "wifi", "internet", "bill",
         "recharge", "dth", "tata sky", "dish tv", "postpaid",
         "prepaid", "insurance", "lic", "emi", "loan",
-        "rent", "maintenance", "society",
+    ],
+    "Rent": [
+        "rent", "house rent", "maintenance", "society", "landlord",
+        "pg", "hostel", "flat", "apartment", "lease",
+    ],
+    "Salary": [
+        "salary", "payroll", "stipend", "income", "wages",
+        "freelance", "payout", "earning", "commission", "bonus",
+    ],
+    "Family": [
+        "mom", "dad", "mother", "father", "brother", "sister",
+        "wife", "husband", "son", "daughter", "parent", "family",
+        "home", "amma", "appa", "bhai", "bhabhi", "uncle", "aunt",
+        "cousin",
+    ],
+    "Medical": [
+        "pharmacy", "medical", "hospital", "doctor", "clinic",
+        "apollo", "medplus", "netmeds", "1mg", "pharmeasy",
+        "lab", "diagnostic", "health", "gym", "fitness",
+        "cult", "yoga", "dentist", "eye", "scan", "surgery",
     ],
     "Entertainment": [
         "netflix", "hotstar", "spotify", "prime", "disney",
@@ -43,20 +62,10 @@ CATEGORY_KEYWORDS: dict[str, list[str]] = {
         "steam", "playstation", "xbox", "youtube", "premium",
         "zee5", "sonyliv", "jiocinema", "voot", "mubi",
     ],
-    "Health": [
-        "pharmacy", "medical", "hospital", "doctor", "clinic",
-        "apollo", "medplus", "netmeds", "1mg", "pharmeasy",
-        "lab", "diagnostic", "health", "gym", "fitness",
-        "cult", "yoga",
-    ],
-    "Education": [
-        "school", "college", "university", "course", "udemy",
-        "coursera", "unacademy", "byju", "tuition", "coaching",
-        "book", "stationery", "exam", "fee",
-    ],
-    "Transfer": [
-        "transfer", "self", "own account", "savings",
-        "neft", "imps", "rtgs", "bank",
+    "Fuel": [
+        "petrol", "diesel", "fuel", "hp", "indian oil",
+        "bharat petroleum", "shell", "petrol pump", "bunk",
+        "cng", "ev charging", "charging station",
     ],
 }
 

@@ -12,6 +12,7 @@ import '../widgets/transaction_card.dart';
 import 'result_screen.dart';
 import 'history_screen.dart';
 import 'analytics_screen.dart';
+import 'monthly_report_screen.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import '../config/app_config.dart';
 
@@ -254,6 +255,69 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
+  void _showLimitReachedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF6584).withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.lock_clock_rounded, color: Color(0xFFFF6584), size: 40),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Limit Reached',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 22),
+            ),
+          ],
+        ),
+        content: const Text(
+          'You have exhausted your free credits. Upgrade to a premium plan to continue tracking your transactions seamlessly.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey, fontSize: 14),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Maybe Later', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showPlanSelectionDialog();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF6C63FF),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: const Text('Upgrade Now', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  bool _checkCreditsAndProceed() {
+    if (_userProfile != null && 
+        _userProfile!['plan'] == 'free' && 
+        (_userProfile!['credits'] ?? 0) <= 0) {
+      _showLimitReachedDialog();
+      return false;
+    }
+    return true;
+  }
+
   Future<void> _loadDailyTotal() async {
     setState(() => _isLoadingTotal = true);
     final total = await ApiService.getDailyTotal();
@@ -277,6 +341,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _pickImage(ImageSource source) async {
+    if (!_checkCreditsAndProceed()) return;
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
@@ -326,6 +391,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _showPasteTextDialog() async {
+    if (!_checkCreditsAndProceed()) return;
     final TextEditingController controller = TextEditingController();
     
     final result = await showDialog<String>(
@@ -414,6 +480,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _navigateToManualEntry() async {
+    if (!_checkCreditsAndProceed()) return;
     final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -656,6 +723,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   child: const Icon(
                                     Icons.bar_chart_rounded,
                                     color: Color(0xFF6C63FF),
+                                    size: 22,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              IconButton(
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const MonthlyReportScreen(),
+                                    ),
+                                  );
+                                },
+                                icon: Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF00B4D8).withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: const Icon(
+                                    Icons.calendar_month_rounded,
+                                    color: Color(0xFF00B4D8),
                                     size: 22,
                                   ),
                                 ),
@@ -966,7 +1056,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       floatingActionButton: ScaleTransition(
         scale: _fabAnimation,
         child: FloatingActionButton(
-          onPressed: _showPasteTextDialog,
+          onPressed: () {
+            if (_checkCreditsAndProceed()) {
+              _showPasteTextDialog();
+            }
+          },
           backgroundColor: const Color(0xFF6C63FF),
           elevation: 4,
           child: const Icon(Icons.add_rounded, color: Colors.white, size: 32),

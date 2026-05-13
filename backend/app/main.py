@@ -111,29 +111,28 @@ async def health_check():
     }
 
 
-# ─── Upload & Extract ───────────────────────────────────────────────
-@app.post("/upload", response_model=TransactionResponse)
-async def upload_image(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
-    """
-    Upload a Google Pay screenshot and extract transaction details.
-    
-    Flow:
-    1. Check user credits/plan
-    2. Read image bytes
-    3. Run Tesseract OCR to extract text
-    4. Parse with regex patterns
-    5. If low confidence, fallback to Gemini LLM
-    6. Auto-tag the transaction
-    7. Decrement credit (if free)
-    8. Return extracted data
-    """
-    # Step 0: Check credits/plan
+def check_credits(current_user: dict):
+    """Check if the user has credits remaining (for free plan)."""
     profile = current_user.get("profile", {})
     plan = profile.get("plan", "free")
     credits = profile.get("credits", 0)
 
     if plan == "free" and credits <= 0:
-        raise HTTPException(status_code=403, detail="No credits remaining. Please upgrade your plan.")
+        raise HTTPException(
+            status_code=403, 
+            detail="No credits remaining. Please upgrade your plan."
+        )
+    return plan, credits
+
+
+# ─── Upload & Extract ───────────────────────────────────────────────
+@app.post("/upload", response_model=TransactionResponse)
+async def upload_image(file: UploadFile = File(...), current_user: dict = Depends(get_current_user)):
+    """
+    Upload a Google Pay screenshot and extract transaction details.
+    """
+    # Step 0: Check credits/plan
+    plan, credits = check_credits(current_user)
 
     # Step 0.1: Validate file type
     is_image = False
@@ -233,6 +232,9 @@ async def parse_text_endpoint(request: Request, current_user: dict = Depends(get
     """
     Parse pasted transaction text.
     """
+    # Check credits
+    check_credits(current_user)
+    
     try:
         body = await request.json()
         raw_text = body.get("text", "")
@@ -268,6 +270,11 @@ async def parse_text_endpoint(request: Request, current_user: dict = Depends(get
         transaction.source = "text"
         transaction.raw_text = raw_text
 
+        # Step 5: Decrement credit for free plan
+        profile = current_user.get("profile", {})
+        if profile.get("plan", "free") == "free":
+            update_user_credits(current_user.get("uid"), -1)
+
         return TransactionResponse(
             success=True,
             data=transaction,
@@ -286,6 +293,10 @@ async def save_transaction(request: TransactionSaveRequest, current_user: dict =
     Save a confirmed transaction to Supabase.
     Called after user reviews and optionally edits the extracted data.
     """
+    # Check credits only for manual entry (screenshot/text already decremented)
+    if request.source == 'manual':
+        check_credits(current_user)
+
     try:
         user_id = current_user.get("uid")
         if not user_id:
@@ -303,6 +314,11 @@ async def save_transaction(request: TransactionSaveRequest, current_user: dict =
         )
 
         if success:
+            # Decrement credit for manual entry after successful save
+            profile = current_user.get("profile", {})
+            if request.source == 'manual' and profile.get("plan", "free") == "free":
+                update_user_credits(user_id, -1)
+                
             return {
                 "success": True,
                 "message": message,
@@ -322,11 +338,19 @@ async def save_transaction(request: TransactionSaveRequest, current_user: dict =
 
 # ─── History ─────────────────────────────────────────────────────────
 @app.get("/history", response_model=HistoryResponse)
-async def get_history(count: int = 20, type: str | None = None, current_user: dict = Depends(get_current_user)):
+async def get_history(
+    count: int = 20, 
+    type: str | None = None, 
+    month: int | None = None,
+    year: int | None = None,
+    current_user: dict = Depends(get_current_user)
+):
     """Fetch recent transactions from Supabase for the current user."""
     try:
         user_id = current_user.get("uid")
-        transactions = get_user_transactions(user_id, count, tx_type=type)
+        logger.info(f"Fetching history for user {user_id}: count={count}, type={type}, month={month}, year={year}")
+        transactions = get_user_transactions(user_id, count, tx_type=type, month=month, year=year)
+        logger.info(f"Found {len(transactions)} transactions")
         return HistoryResponse(
             success=True,
             transactions=transactions,

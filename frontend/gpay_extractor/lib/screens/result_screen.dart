@@ -76,8 +76,34 @@ class _ResultScreenState extends State<ResultScreen> with SingleTickerProviderSt
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Row(children: [const Icon(Icons.check_circle, color: Colors.white, size: 20), const SizedBox(width: 8), Text(result['message'] ?? 'Saved successfully')]), backgroundColor: const Color(0xFF2ED573)));
       Navigator.pop(context, true);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? 'Failed to save. Check backend.'), backgroundColor: const Color(0xFFFF4757)));
+      final String message = result['message'] ?? 'Failed to save';
+      if (message.contains('credits') || message.contains('upgrade')) {
+        _showUpgradePrompt(message);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: const Color(0xFFFF4757)));
+      }
     }
+  }
+
+  void _showUpgradePrompt(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Limit Reached'),
+        content: Text(message),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(context, false); // Return to home
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF6C63FF), foregroundColor: Colors.white),
+            child: const Text('Upgrade Now'),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildField({required String label, required TextEditingController controller, required IconData icon, String? hint, String? prefixText, TextInputType? keyboardType}) {

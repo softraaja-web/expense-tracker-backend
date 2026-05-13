@@ -197,7 +197,7 @@ def insert_transaction(
         return False, error_str
 
 
-def get_user_transactions(user_id: str, count: int = 20, tx_type: Optional[str] = None) -> list[dict]:
+def get_user_transactions(user_id: str, count: int = 20, tx_type: Optional[str] = None, month: Optional[int] = None, year: Optional[int] = None) -> list[dict]:
     """
     Fetch recent transactions for a specific user, optionally filtered by type.
     """
@@ -212,6 +212,18 @@ def get_user_transactions(user_id: str, count: int = 20, tx_type: Optional[str] 
         
         if tx_type and tx_type != 'All':
             query = query.eq("type", tx_type.lower())
+
+        if year:
+            if month:
+                # Filter for specific month and year
+                import calendar
+                last_day = calendar.monthrange(year, month)[1]
+                start_date = f"{year}-{month:02d}-01"
+                end_date = f"{year}-{month:02d}-{last_day}"
+                query = query.gte("date", start_date).lte("date", end_date)
+            else:
+                # Filter for entire year
+                query = query.gte("date", f"{year}-01-01").lte("date", f"{year}-12-31")
 
         response = query.order("date", desc=True)\
             .order("created_at", desc=True)\
