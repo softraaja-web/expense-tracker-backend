@@ -108,8 +108,8 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(
             logger.warning(f"Could not load/create profile for {uid}, using defaults")
             profile = {"plan": "free", "credits": 20}
         
-        # Check plan expiry
-        if profile.get("plan") == "pro":
+        # Check plan expiry for non-free plans
+        if profile.get("plan") != "free":
             expiry_str = profile.get("expiry_date")
             if expiry_str:
                 try:

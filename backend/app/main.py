@@ -20,6 +20,7 @@ from app.models.transaction import (
     HistoryResponse,
     AnalysisRequest,
     AnalysisResponse,
+    PlanRequest,
 )
 from app.ocr.extractor import extract_text
 from app.parser.regex_parser import parse_transaction
@@ -55,10 +56,26 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Initialize Razorpay Client
+# Initialize Razorpay Setup ──────────────────────────────────────────────────
 razorpay_client = razorpay.Client(
     auth=(settings.razorpay_key, settings.razorpay_secret)
 ) if settings.razorpay_key and settings.razorpay_secret else None
+
+# ─── Subscription Plans ──────────────────────────────────────────────
+SUBSCRIPTION_PLANS = {
+    "plus": {
+        "name": "Plus Plan",
+        "price_inr": 99,
+        "credits": 300,
+        "description": "300 transactions per month"
+    },
+    "pro": {
+        "name": "Pro Plan",
+        "price_inr": 299,
+        "credits": 1000,
+        "description": "1,000 transactions per month"
+    }
+}
 
 # ─── CORS Middleware ─────────────────────────────────────────────────
 app.add_middleware(
@@ -110,15 +127,12 @@ async def upload_image(file: UploadFile = File(...), current_user: dict = Depend
     8. Return extracted data
     """
     # Step 0: Check credits/plan
-    profile = current_user.get("profile") or {}
+    profile = current_user.get("profile", {})
     plan = profile.get("plan", "free")
     credits = profile.get("credits", 0)
 
     if plan == "free" and credits <= 0:
-        raise HTTPException(
-            status_code=403,
-            detail="Credit limit reached. Please upgrade to Pro for unlimited uploads."
-        )
+        raise HTTPException(status_code=403, detail="No credits remaining. Please upgrade your plan.")
 
     # Step 0.1: Validate file type
     is_image = False
@@ -388,16 +402,24 @@ async def get_profile(current_user: dict = Depends(get_current_user)):
 
 # ─── Payments (Razorpay) ───────────────────────────────────────────
 @app.post("/create-order")
-async def create_order(current_user: dict = Depends(get_current_user)):
-    """Create a Razorpay order for Pro subscription."""
+async def create_order(request: PlanRequest, current_user: dict = Depends(get_current_user)):
+    """Create a Razorpay order for a specific subscription plan."""
     if not razorpay_client:
         raise HTTPException(status_code=500, detail="Razorpay not configured")
 
     try:
-        # Amount: ₹99 (9900 paise)
-        amount = 9900 
+        plan_id = request.plan_id.lower()
+        
+        if plan_id not in SUBSCRIPTION_PLANS:
+            raise HTTPException(status_code=400, detail=f"Invalid plan: {plan_id}")
+
+        plan = SUBSCRIPTION_PLANS[plan_id]
+        amount = plan["price_inr"] * 100 # In paise
         currency = "INR"
-        notes = {"user_id": current_user.get("uid")}
+        notes = {
+            "user_id": current_user.get("uid"),
+            "plan_id": plan_id
+        }
 
         order = razorpay_client.order.create({
             "amount": amount,
@@ -406,6 +428,8 @@ async def create_order(current_user: dict = Depends(get_current_user)):
         })
 
         return order
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Razorpay order creation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Order creation failed: {str(e)}")
@@ -447,11 +471,19 @@ async def verify_payment(request: Request, current_user: dict = Depends(get_curr
         # Upgrade User
         expiry_date = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
         
+        # Get plan from notes
+        plan_id = data.get("plan_id")
+        if not plan_id:
+            # Fallback to check notes in order if possible, but easier to pass from frontend
+            plan_id = "plus" 
+
+        plan_info = SUBSCRIPTION_PLANS.get(plan_id, SUBSCRIPTION_PLANS["plus"])
+        
         success = update_user_plan(
             user_id=current_user.get("uid"),
-            plan="pro",
+            plan=plan_id,
             expiry_date=expiry_date,
-            credits=999999 # Unlimited (large number)
+            credits=plan_info["credits"]
         )
 
         if success:

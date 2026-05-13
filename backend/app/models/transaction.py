@@ -66,3 +66,8 @@ class AnalysisResponse(BaseModel):
     success: bool
     insight: str
     message: str = ""
+
+
+class PlanRequest(BaseModel):
+    """Request body for subscription plan upgrade."""
+    plan_id: str = "plus"
